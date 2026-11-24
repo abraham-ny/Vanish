@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
-# Build one architecture and leave dist/vanish.vitalsoft_<arch>.click behind.
-#   ci/build-click.sh <amd64|arm64|armhf>
+# Build the arch-independent (pure QML) click and leave dist/vanish.vitalsoft_all.click behind.
+#   ci/build-click.sh [all]
 # Runs inside a clickable/ci-20.04-* image (clickable is preinstalled and in container mode).
 set -euo pipefail
 cd "$(dirname "$0")/.."
-arch="${1:?usage: build-click.sh <amd64|arm64|armhf>}"
+arch="${1:-all}"
+
+if [ "$arch" != "all" ]; then
+    echo "Vanish is pure QML, only arch 'all' is supported (got '$arch')" >&2
+    exit 1
+fi
 
 export CLICK_ARCH_OVERRIDE="$arch"      # read by CMakeLists.txt -> manifest "architecture"
 rm -rf build dist
