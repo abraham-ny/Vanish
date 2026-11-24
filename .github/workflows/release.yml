@@ -27,14 +27,14 @@ jobs:
           VANISH_API_URL: ${{ secrets.VANISH_API_URL }}
         run: ./ci/prepare.sh "${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}"
 
-      - name: Build click (architecture: all)
+      - name: Build click (arch all)
         run: |
           mkdir -p dist
           docker run --rm -v "$PWD":/work -w /work \
             clickable/ci-20.04-amd64 \
             ./ci/build-click.sh amd64
 
-      - name: Verify the package is arch "all"
+      - name: Verify the package is arch all
         run: |
           ls -l dist
           shopt -s nullglob
@@ -43,7 +43,7 @@ jobs:
           for f in "${files[@]}"; do
             case "$f" in
               *_all.click) ;;
-              *) echo "::error::$f is not an arch-all package (check manifest.json.in: \"architecture\": \"@CLICK_ARCH@\" and clickable.yaml: builder: pure-qml-cmake)"; exit 1 ;;
+              *) echo "::error::$f is not an arch-all package (check manifest.json.in and clickable.yaml builder)"; exit 1 ;;
             esac
           done
 
