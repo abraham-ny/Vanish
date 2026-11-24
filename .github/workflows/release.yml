@@ -1,6 +1,8 @@
-# Builds Vanish for amd64, arm64 and armhf with Clickable's CI images (they cross-compile, so a normal
-# ubuntu runner is enough). Push a tag "vX.Y.Z" (must equal the version in manifest.json.in) to publish a
-# GitHub Release with the three .click files. Any other push / PR just uploads them as workflow artifacts.
+# Builds the Vanish click package with Clickable's CI image. Vanish is a pure QML app, so it is
+# architecture-independent: ONE build produces a single vanish_X.Y.Z_all.click. There is no
+# "clickable/ci-20.04-all" image; the amd64 image is used to build it (arch-agnostic builder).
+# Push a tag "vX.Y.Z" (must equal the version in manifest.json.in) to publish a GitHub Release with
+# the .click file. Any other push / PR just uploads it as a workflow artifact.
 # Required repository secret: VANISH_API_URL  (Settings > Secrets and variables > Actions)
 name: build-click
 
@@ -17,10 +19,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        arch: [all]
     steps:
       - uses: actions/checkout@v4
 
@@ -29,16 +27,30 @@ jobs:
           VANISH_API_URL: ${{ secrets.VANISH_API_URL }}
         run: ./ci/prepare.sh "${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}"
 
-      - name: Build ${{ matrix.arch }} click
+      - name: Build click (architecture: all)
         run: |
+          mkdir -p dist
           docker run --rm -v "$PWD":/work -w /work \
-            clickable/ci-20.04-${{ matrix.arch }} \
-            ./ci/build-click.sh ${{ matrix.arch }}
+            clickable/ci-20.04-amd64 \
+            ./ci/build-click.sh amd64
+
+      - name: Verify the package is arch "all"
+        run: |
+          ls -l dist
+          shopt -s nullglob
+          files=(dist/*.click)
+          [ ${#files[@]} -gt 0 ] || { echo "No .click file produced"; exit 1; }
+          for f in "${files[@]}"; do
+            case "$f" in
+              *_all.click) ;;
+              *) echo "::error::$f is not an arch-all package (check manifest.json.in: \"architecture\": \"@CLICK_ARCH@\" and clickable.yaml: builder: pure-qml-cmake)"; exit 1 ;;
+            esac
+          done
 
       - uses: actions/upload-artifact@v4
         with:
-          name: click-${{ matrix.arch }}
-          path: dist/*.click
+          name: click-all
+          path: dist/*_all.click
           if-no-files-found: error
 
   release:
@@ -50,8 +62,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          pattern: click-*
-          merge-multiple: true
+          name: click-all
           path: dist
 
       - name: Create release
