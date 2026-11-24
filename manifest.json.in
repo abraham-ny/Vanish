@@ -3,7 +3,7 @@
     "title": "Vanish",
     "description": "Anonymous temporary group chats",
     "version": "0.1.1",
-    "maintainer": "Vitalsoft <vitalsoft@users.noreply.github.com>",
+    "maintainer": "Vitalsoft <abraham-ny@users.noreply.github.com>",
     "architecture": "@CLICK_ARCH@",
     "framework": "@CLICK_FRAMEWORK@",
     "hooks": {
