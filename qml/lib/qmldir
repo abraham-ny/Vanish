@@ -1,0 +1,3 @@
+singleton Style 1.0 Style.qml
+singleton Store 1.0 Store.qml
+singleton Nav 1.0 Nav.qml

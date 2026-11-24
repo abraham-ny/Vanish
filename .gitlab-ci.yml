@@ -1,0 +1,79 @@
+# Builds Vanish for amd64, arm64 and armhf with Clickable's CI images.
+#   - every branch push / tag: three .click job artifacts
+#   - tag "vX.Y.Z" (must equal manifest.json.in version): artifacts are uploaded to the Package Registry
+#     and a GitLab Release with the three files is created.
+# Required CI/CD variable: VANISH_API_URL  (Settings > CI/CD > Variables; mark "Protected" so only tag /
+# protected-branch pipelines see it. It cannot be "Masked": the URL contains '_' and '-'.)
+# Runner: any Docker-executor runner (gitlab.com shared runners work). The clickable/ci-20.04-<arch> images
+# cross-compile, so all three jobs run on a normal amd64 runner.
+
+stages: [build, publish, release]
+
+workflow:
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH
+
+.build:
+  stage: build
+  script:
+    - ./ci/prepare.sh "${CI_COMMIT_TAG:-}"
+    - ./ci/build-click.sh "$ARCH"
+  artifacts:
+    name: "vanish-$ARCH"
+    paths: [dist/*.click]
+    expire_in: 30 days
+
+build-amd64:
+  extends: .build
+  image: clickable/ci-20.04-amd64
+  variables: { ARCH: amd64 }
+
+build-arm64:
+  extends: .build
+  image: clickable/ci-20.04-arm64
+  variables: { ARCH: arm64 }
+
+build-armhf:
+  extends: .build
+  image: clickable/ci-20.04-armhf
+  variables: { ARCH: armhf }
+
+publish:
+  stage: publish
+  image: curlimages/curl:latest
+  rules:
+    - if: $CI_COMMIT_TAG
+  needs: [build-amd64, build-arm64, build-armhf]     # their dist/ artifacts are downloaded automatically
+  script:
+    - |
+      for f in dist/*.click; do
+        echo "uploading $f"
+        curl --fail --silent --show-error --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+          --upload-file "$f" \
+          "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/vanish/${CI_COMMIT_TAG}/$(basename "$f")"
+      done
+
+release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  rules:
+    - if: $CI_COMMIT_TAG
+  needs: [publish]
+  script:
+    - echo "Creating release $CI_COMMIT_TAG"
+  release:
+    tag_name: $CI_COMMIT_TAG
+    name: "Vanish $CI_COMMIT_TAG"
+    description: "$CI_COMMIT_MESSAGE"
+    assets:
+      links:
+        - name: vanish.vitalsoft_amd64.click
+          url: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/vanish/${CI_COMMIT_TAG}/vanish.vitalsoft_amd64.click"
+          link_type: package
+        - name: vanish.vitalsoft_arm64.click
+          url: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/vanish/${CI_COMMIT_TAG}/vanish.vitalsoft_arm64.click"
+          link_type: package
+        - name: vanish.vitalsoft_armhf.click
+          url: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/vanish/${CI_COMMIT_TAG}/vanish.vitalsoft_armhf.click"
+          link_type: package

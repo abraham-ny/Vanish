@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Vanish
+Comment=Anonymous temporary group chats
+Exec=qmlscene %u qml/Main.qml
+Icon=assets/logo.svg
+Terminal=false
+Type=Application
+X-Lomiri-Touch=true
+X-Ubuntu-Touch=true

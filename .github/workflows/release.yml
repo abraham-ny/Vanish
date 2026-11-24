@@ -1,0 +1,65 @@
+# Builds Vanish for amd64, arm64 and armhf with Clickable's CI images (they cross-compile, so a normal
+# ubuntu runner is enough). Push a tag "vX.Y.Z" (must equal the version in manifest.json.in) to publish a
+# GitHub Release with the three .click files. Any other push / PR just uploads them as workflow artifacts.
+# Required repository secret: VANISH_API_URL  (Settings > Secrets and variables > Actions)
+name: build-click
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64, armhf]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare (version check, backend URL)
+        env:
+          VANISH_API_URL: ${{ secrets.VANISH_API_URL }}
+        run: ./ci/prepare.sh "${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}"
+
+      - name: Build ${{ matrix.arch }} click
+        run: |
+          docker run --rm -v "$PWD":/work -w /work \
+            clickable/ci-20.04-${{ matrix.arch }} \
+            ./ci/build-click.sh ${{ matrix.arch }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: click-${{ matrix.arch }}
+          path: dist/*.click
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: click-*
+          merge-multiple: true
+          path: dist
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -l dist
+          gh release create "${{ github.ref_name }}" dist/*.click \
+            --repo "${{ github.repository }}" \
+            --title "Vanish ${{ github.ref_name }}" \
+            --generate-notes

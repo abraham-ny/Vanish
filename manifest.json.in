@@ -1,0 +1,15 @@
+{
+    "name": "vanish.vitalsoft",
+    "title": "Vanish",
+    "description": "Anonymous temporary group chats",
+    "version": "0.1.0",
+    "maintainer": "Vitalsoft <vitalsoft@users.noreply.github.com>",
+    "architecture": "@CLICK_ARCH@",
+    "framework": "@CLICK_FRAMEWORK@",
+    "hooks": {
+        "vanish": {
+            "apparmor": "vanish.apparmor",
+            "desktop": "vanish.desktop"
+        }
+    }
+}
