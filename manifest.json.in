@@ -2,7 +2,7 @@
     "name": "vanish.vitalsoft",
     "title": "Vanish",
     "description": "Anonymous temporary group chats",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "maintainer": "Vitalsoft <abraham-ny@users.noreply.github.com>",
     "architecture": "@CLICK_ARCH@",
     "framework": "@CLICK_FRAMEWORK@",
